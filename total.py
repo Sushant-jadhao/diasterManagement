@@ -1,14 +1,22 @@
-import requests
 import os
+from dotenv import load_dotenv
+import requests
 import pandas as pd
 import spacy
-from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Load SpaCy model
 nlp = spacy.load('en_core_web_sm')
 
-
 # API keys for different news platforms
-load_dotenv()
+API_KEYS = {
+    'newsapi': os.getenv('NEWSAPI_KEY'),
+    'gnews': os.getenv('GNEWS_KEY'),
+    'eventregistry': os.getenv('EVENTREGISTRY_KEY'),
+    'mediastack': os.getenv('MEDIASTACK_KEY')
+}
 
 # Define URLs for each news platform
 URLS = {
@@ -34,7 +42,7 @@ PARAMS = {
         'action': 'getArticles',
         'country': 'IN',
         'lang': 'en',
-        'apiKey': API_KEYS['eventregistry']  # API key as a query parameter
+        'apiKey': API_KEYS['eventregistry']
     },
     'mediastack': {
         'access_key': API_KEYS['mediastack'],
@@ -42,13 +50,41 @@ PARAMS = {
         'languages': 'en'
     }
 }
-
 # Updated disaster-related keywords
 DISASTER_KEYWORDS = [
+    # Natural Disasters
     'earthquake', 'flood', 'hurricane', 'tornado', 'wildfire', 
-    'storm', 'tsunami', 'drought', 'accident', 'collision', 
-    'explosion', 'crash', 'fire', 'catastrophe', 'calamity'
+    'storm', 'tsunami', 'drought', 'volcano', 'avalanche',
+    'landslide', 'cyclone', 'mudslide', 'blizzard', 'hailstorm',
+
+    # Man-made Disasters
+    'accident', 'collision', 'explosion', 'crash', 'fire', 
+    'chemical spill', 'oil spill', 'nuclear disaster', 'power outage',
+    'radiation leak', 'biohazard', 'terrorist attack', 'bombing',
+
+    # Human Impact and Response
+    'death', 'fatality', 'casualty', 'injury', 'injured', 
+    'missing', 'trapped', 'rescue', 'evacuation', 'shelter', 
+    'aid', 'assistance', 'relief', 'survivor', 'recovery', 
+    'life', 'livelihood', 'emergency', 'first aid', 'medical response',
+
+    # Severity and Consequence
+    'disaster', 'catastrophe', 'calamity', 'devastation', 
+    'destruction', 'damage', 'loss', 'ruin', 'collapse', 
+    'crisis', 'hazard', 'danger', 'risk', 'peril',
+
+    # Recovery and Mitigation
+    'reconstruction', 'rehabilitation', 'cleanup', 'restoration', 
+    'rebuild', 'support', 'donation', 'volunteer', 'community', 
+    'preparedness', 'warning', 'alert', 'evacuate', 'safety',
+    
+    # Social and Economic Impact
+    'homeless', 'displaced', 'refugee', 'migration', 'poverty', 
+    'economic loss', 'infrastructure damage', 'food shortage', 
+    'water shortage', 'electricity outage', 'communication failure', 
+    'transport disruption', 'hospitalization', 'quarantine'
 ]
+
 
 # Function to check if the article is about a disaster
 def is_disaster_article(article):
