@@ -1,0 +1,44 @@
+/* src/components/Measures.css */
+.measures-container {
+    padding: 20px;
+    background-color: #f5f5f5;
+  }
+  
+  .measures-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2em;
+    color: #333;
+  }
+  
+  .measures-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+  }
+  
+  .measure-category {
+    margin-bottom: 30px;
+  }
+  
+  .measure-category h2 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #555;
+  }
+  
+  .measure-category p {
+    font-size: 1em;
+    line-height: 1.6;
+    color: #333;
+  }
+  
+  .measure-category ul {
+    margin: 15px 0;
+    padding-left: 20px;
+  }
+  
+  .measure-category li {
+    margin-bottom: 10px;
+  }
+  

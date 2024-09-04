@@ -171,8 +171,8 @@ def main():
     print(df)
     
     # Optionally, save the data to a CSV file
-    df.to_csv('disaster_news_with_locations_in_india.csv', index=False)
-    print("Disaster-related news saved to 'disaster_news_with_locations_in_india.csv'.")
+    # df.to_csv('disaster_news_with_locations_in_india.csv', index=False)
+    # print("Disaster-related news saved to 'disaster_news_with_locations_in_india.csv'.")
 
 if __name__ == "__main__":
     main()
