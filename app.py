@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import spacy
+import re
 
 app = Flask(__name__)
 
@@ -17,7 +18,8 @@ API_KEYS = {
     'newsapi': os.getenv('NEWSAPI_KEY'),
     'gnews': os.getenv('GNEWS_KEY'),
     'eventregistry': os.getenv('EVENTREGISTRY_KEY'),
-    'mediastack': os.getenv('MEDIASTACK_KEY')
+    'mediastack': os.getenv('MEDIASTACK_KEY'),
+    'opencage': os.getenv('OPENCAGE_KEY')  # Added geocoding API key
 }
 
 # Define URLs for each news platform
@@ -25,7 +27,8 @@ URLS = {
     'newsapi': 'https://newsapi.org/v2/top-headlines',
     'gnews': 'https://gnews.io/api/v4/top-headlines',
     'eventregistry': 'https://eventregistry.org/api/v1/getArticles',
-    'mediastack': 'http://api.mediastack.com/v1/news'
+    'mediastack': 'http://api.mediastack.com/v1/news',
+    'opencage': 'https://api.opencagedata.com/geocode/v1/json'  # Added geocoding URL
 }
 
 # Parameters for each news platform
@@ -55,34 +58,35 @@ PARAMS = {
 
 # Keywords for disaster-related articles
 DISASTER_KEYWORDS = [
-    'earthquake', 'flood', 'hurricane', 'tornado', 'wildfire', 
+    'earthquake', 'flood', 'hurricane', 'tornado', 'wildfire',
     'storm', 'tsunami', 'drought', 'volcano', 'avalanche',
     'landslide', 'cyclone', 'mudslide', 'blizzard', 'hailstorm',
-    'accident', 'collision', 'explosion', 'crash', 'fire', 
+    'accident', 'collision', 'explosion', 'crash', 'fire',
     'chemical spill', 'oil spill', 'nuclear disaster', 'power outage',
     'radiation leak', 'biohazard', 'terrorist attack', 'bombing',
-    'death', 'fatality', 'casualty', 'injury', 'injured', 
-    'missing', 'trapped', 'rescue', 'evacuation', 'shelter', 
-    'aid', 'assistance', 'relief', 'survivor', 'recovery', 
+    'death', 'fatality', 'casualty', 'injury', 'injured',
+    'missing', 'trapped', 'rescue', 'evacuation', 'shelter',
+    'aid', 'assistance', 'relief', 'survivor', 'recovery',
     'life', 'livelihood', 'emergency', 'first aid', 'medical response',
-    'disaster', 'catastrophe', 'calamity', 'devastation', 
-    'destruction', 'damage', 'loss', 'ruin', 'collapse', 
+    'disaster', 'catastrophe', 'calamity', 'devastation',
+    'destruction', 'damage', 'loss', 'ruin', 'collapse',
     'crisis', 'hazard', 'danger', 'risk', 'peril',
-    'reconstruction', 'rehabilitation', 'cleanup', 'restoration', 
-    'rebuild', 'support', 'donation', 'volunteer', 'community', 
+    'reconstruction', 'rehabilitation', 'cleanup', 'restoration',
+    'rebuild', 'support', 'donation', 'volunteer', 'community',
     'preparedness', 'warning', 'alert', 'evacuate', 'safety',
-    'homeless', 'displaced', 'refugee', 'migration', 'poverty', 
-    'economic loss', 'infrastructure damage', 'food shortage', 
-    'water shortage', 'electricity outage', 'communication failure', 
+    'homeless', 'displaced', 'refugee', 'migration', 'poverty',
+    'economic loss', 'infrastructure damage', 'food shortage',
+    'water shortage', 'electricity outage', 'communication failure',
     'transport disruption', 'hospitalization', 'quarantine'
 ]
 
 # Function to check if the article is about a disaster
-def is_disaster_article(article):
-    title = article.get('title', '').lower()
-    description = article.get('description', '').lower()
-    combined_text = title + ' ' + description
-    return any(keyword in combined_text for keyword in DISASTER_KEYWORDS)
+def extract_disaster_info(text):
+    text = text.lower()
+    for keyword in DISASTER_KEYWORDS:
+        if keyword in text:
+            return keyword
+    return 'Unknown'
 
 # Function to extract location using SpaCy
 def extract_location(text):
@@ -128,6 +132,32 @@ def fetch_all_news():
     }
     return news_sources
 
+# Function to get geocode for a location
+def get_geocode(location_name):
+    params = {
+        'q': location_name,
+        'key': API_KEYS['opencage']
+    }
+    response = requests.get(URLS['opencage'], params=params)
+    if response.status_code == 200:
+        data = response.json()
+        if data['results']:
+            result = data['results'][0]
+            return {
+                'latitude': result['geometry']['lat'],
+                'longitude': result['geometry']['lng']
+            }
+    return None
+
+# Function to extract people involved from text
+def extract_people_involved(text):
+    numbers = re.findall(r'\b\d+\b', text)
+    numbers = [int(num) for num in numbers if int(num) > 0]
+    if numbers:
+        return ', '.join(map(str, numbers))
+    else:
+        return 'Unknown'
+
 # API endpoint to get disaster-related news
 @app.route('/api/disaster-news', methods=['GET'])
 def get_disaster_news():
@@ -136,16 +166,49 @@ def get_disaster_news():
 
     for source, articles in all_news.items():
         for article in articles:
-            if is_disaster_article(article):
+            title = article.get('title', '')
+            description = article.get('description', '')
+            combined_text = title + ' ' + description
+            disaster_type = extract_disaster_info(combined_text)
+            location_name = extract_location(combined_text)
+            people_involved = extract_people_involved(combined_text)
+            
+            if disaster_type != 'Unknown':
                 all_articles.append({
-                    'source': source,
-                    'title': article.get('title', ''),
-                    'description': article.get('description', ''),
-                    'publishedAt': article.get('publishedAt', ''),
-                    'location': extract_location(article.get('title', '') + ' ' + article.get('description', ''))
+                    'type': disaster_type,
+                    'location': location_name,
+                    'people_involved': people_involved
                 })
 
     return jsonify(all_articles)
+
+# API endpoint to get disaster-related locations with geocoding
+@app.route('/api/disaster-locations', methods=['GET'])
+def get_disaster_locations():
+    all_news = fetch_all_news()
+    locations = []
+
+    for source, articles in all_news.items():
+        for article in articles:
+            title = article.get('title', '')
+            description = article.get('description', '')
+            combined_text = title + ' ' + description
+            disaster_type = extract_disaster_info(combined_text)
+            location_name = extract_location(combined_text)
+
+            if disaster_type != 'Unknown' and location_name != 'Unknown':
+                coordinates = get_geocode(location_name)
+                if coordinates:
+                    locations.append({
+                        'type': disaster_type,
+                        'location': location_name,
+                        'latitude': coordinates['latitude'],
+                        'longitude': coordinates['longitude']
+                    })
+
+    unique_locations = list({loc['location']: loc for loc in locations}.values())
+
+    return jsonify(unique_locations)
 
 # Serve the React frontend
 @app.route('/')
